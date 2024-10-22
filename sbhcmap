@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Interactive Map with Search Feature</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .custom-marker i {
+            font-size: 24px;
+        }
+        .legend {
+            background: white;
+            padding: 10px;
+            line-height: 1.5;
+            border: 2px solid black;
+            position: fixed;
+            bottom: 50px;
+            left: 50px;
+            z-index: 9998;
+            display: none; /* Hide legend initially */
+        }
+        #menu-container {
+            position: fixed;
+            top: 50px;
+            left: 50px;
+            z-index: 10001;
+            background: white;
+            padding: 10px;
+            border: 2px solid black;
+            cursor: pointer;
+        }
+        #menu-content {
+            display: none;
+            margin-top: 10px;
+        }
+        #menu-container button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #add-marker-form {
+            z-index: 10001;
+        }
+        #search-feature {
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="menu-container">
+        <strong id="menu-arrow" onclick="toggleMenuContent()">Menu &#x25BC;</strong>
+        <div id="menu-content">
+            <button onclick="toggleAddMarkerForm()">Add Marker</button>
+            <button onclick="toggleSearchFeature()">Search Markers by Service</button>
+        </div>
+    </div>
+
+    <div id="add-marker-form" style="position: fixed; top: 210px; left: 50px; z-index:10001; 
+        background: white; padding: 15px; border: 2px solid black; display: none;">
+        <h4>Add Marker</h4>
+        <label for="marker-name">Name:</label><br>
+        <input type="text" id="marker-name"><br><br>
+        <label for="marker-description">Description (optional):</label><br>
+        <input type="text" id="marker-description"><br><br>
+        <label for="marker-category">Category (optional):</label><br>
+        <select id="marker-category">
+            <option value="">None</option>
+            <option value="SBHC">SBHC</option>
+            <option value="SBMH">SBMH</option>
+            <option value="MCC">MCC</option>
+            <option value="NOSBHC">No SBHC</option>
+            <option value="Unknown">Unknown</option>
+            <option value="School">School</option>
+        </select><br><br>
+        <label>Services (optional):</label><br>
+        <input type="checkbox" id="adolescent" value="Adolescent & Transition Med"> Adolescent & Transition Med<br>
+        <input type="checkbox" id="allergy" value="Allergy"> Allergy<br>
+        <input type="checkbox" id="audiology" value="Audiology"> Audiology<br>
+        <input type="checkbox" id="bmcp" value="BMCP"> BMCP<br>
+        <input type="checkbox" id="cardiology" value="Cardiology"> Cardiology<br>
+        <input type="checkbox" id="chsn" value="CHSN"> CHSN<br>
+        <input type="checkbox" id="ddbp" value="DDBP"> DDBP<br>
+        <input type="checkbox" id="dermatology" value="Dermatology"> Dermatology<br>
+        <input type="checkbox" id="endocrinology" value="Endocrinology"> Endocrinology<br>
+        <input type="checkbox" id="general_pediatrics" value="General & Community Pediatrics"> General & Community Pediatrics<br>
+        <input type="checkbox" id="lab_services" value="Lab Services"> Lab Services<br>
+        <input type="checkbox" id="psychiatry" value="Psychiatry"> Psychiatry<br>
+        <input type="checkbox" id="pulmonary" value="Pulmonary"> Pulmonary<br>
+        <input type="checkbox" id="sports_medicine" value="Sports Medicine"> Sports Medicine<br><br>
+        <label for="marker-lat">Latitude:</label><br>
+        <input type="text" id="marker-lat"><br><br>
+        <label for="marker-lon">Longitude:</label><br>
+        <input type="text" id="marker-lon"><br><br>
+        <button onclick="submitMarker()">Add Marker</button>
+        <button onclick="closeAddMarkerForm()">Cancel</button>
+    </div>
+
+    <div id="search-feature" style="position: fixed; top: 250px; left: 50px; z-index:9999; 
+        background: white; padding: 15px; border: 2px solid black; display: none;">
+        <h4>Search Markers by Service</h4>
+        <label for="service-search">Service:</label><br>
+        <select id="service-search">
+            <option value="Adolescent & Transition Med">Adolescent & Transition Med</option>
+            <option value="Allergy">Allergy</option>
+            <option value="Audiology">Audiology</option>
+            <option value="BMCP">BMCP</option>
+            <option value="Cardiology">Cardiology</option>
+            <option value="CHSN">CHSN</option>
+            <option value="DDBP">DDBP</option>
+            <option value="Dermatology">Dermatology</option>
+            <option value="Endocrinology">Endocrinology</option>
+            <option value="General & Community Pediatrics">General & Community Pediatrics</option>
+            <option value="Lab Services">Lab Services</option>
+            <option value="Psychiatry">Psychiatry</option>
+            <option value="Pulmonary">Pulmonary</option>
+            <option value="Sports Medicine">Sports Medicine</option>
+        </select><br><br>
+        <button onclick="searchMarkers()">Search</button>
+    </div>
+
+    <div id="legend" class="legend">
+        <h4>Legend</h4>
+        <i style="color: blue; font-size: 24px;">•</i> SBHC<br>
+        <i style="color: red; font-size: 24px;">•</i> SBMH<br>
+        <i style="color: purple; font-size: 24px;">•</i> MCC<br>
+        <i style="color: orange; font-size: 24px;">•</i> No SBHC / School<br>
+        <i style="color: gray; font-size: 24px;">•</i> Unknown<br>
+    </div>
+
+    <script>
+        var map = L.map('map').setView([39.1, -84.5], 9);
+
+        var baseLayers = {
+            "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+            }).addTo(map),
+            "Satellite": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+            })
+        };
+
+        var overlayLayers = {
+            "Primary": L.layerGroup().addTo(map),
+            "Secondary": L.layerGroup().addTo(map),
+            "SBHC": L.layerGroup().addTo(map),
+            "SBMH": L.layerGroup().addTo(map),
+            "MCC": L.layerGroup().addTo(map),
+            "No SBHC / School": L.layerGroup().addTo(map),
+            "Unknown": L.layerGroup().addTo(map),
+            "Legend": L.layerGroup() // Placeholder for legend control
+        };
+
+        var layerControl = L.control.layers(baseLayers, overlayLayers).addTo(map);
+
+        // Toggle legend visibility based on the layer control
+        map.on('overlayadd', function (eventLayer) {
+            if (eventLayer.name === 'Legend') {
+                document.getElementById('legend').style.display = 'block';
+            }
+        });
+
+        map.on('overlayremove', function (eventLayer) {
+            if (eventLayer.name === 'Legend') {
+                document.getElementById('legend').style.display = 'none';
+            }
+        });
+
+        var marker_services = [];
+
+        function toggleMenuContent() {
+            var menuContent = document.getElementById('menu-content');
+            var menuArrow = document.getElementById('menu-arrow');
+            if (menuContent.style.display === 'none' || menuContent.style.display === '') {
+                menuContent.style.display = 'block';
+                menuArrow.innerHTML = 'Menu &#x25B2;';
+            } else {
+                menuContent.style.display = 'none';
+                menuArrow.innerHTML = 'Menu &#x25BC;';
+                // Close add marker form and search feature when the menu is closed
+                closeAddMarkerForm();
+                document.getElementById('search-feature').style.display = 'none';
+            }
+        }
+
+        function toggleAddMarkerForm() {
+            var form = document.getElementById('add-marker-form');
+            if (form.style.display === 'none' || form.style.display === '') {
+                form.style.display = 'block';
+                document.getElementById('search-feature').style.display = 'none';
+            } else {
+                form.style.display = 'none';
+            }
+        }
+
+        function closeAddMarkerForm() {
+            document.getElementById('add-marker-form').style.display = 'none';
+        }
+
+        function toggleSearchFeature() {
+            var searchFeature = document.getElementById('search-feature');
+            if (searchFeature.style.display === 'none' || searchFeature.style.display === '') {
+                searchFeature.style.display = 'block';
+                document.getElementById('add-marker-form').style.display = 'none';
+            } else {
+                searchFeature.style.display = 'none';
+            }
+        }
+
+        function submitMarker() {
+            var name = document.getElementById('marker-name').value;
+            var description = document.getElementById('marker-description').value;
+            var category = document.getElementById('marker-category').value;
+            var lat = parseFloat(document.getElementById('marker-lat').value);
+            var lon = parseFloat(document.getElementById('marker-lon').value);
+
+            // Get selected services
+            var services = [];
+            document.querySelectorAll('#add-marker-form input[type="checkbox"]:checked').forEach(function(checkbox) {
+                services.push(checkbox.value);
+            });
+            var services_text = services.length ? "<br><b>Services:</b> " + services.join(", ") : "<br><b>Services:</b> None";
+
+            if (name && !isNaN(lat) && !isNaN(lon)) {
+                var color;
+                var overlay;
+                switch (category) {
+                    case 'SBHC': color = 'blue'; overlay = overlayLayers['SBHC']; break;
+                    case 'SBMH': color = 'red'; overlay = overlayLayers['SBMH']; break;
+                    case 'MCC': color = 'purple'; overlay = overlayLayers['MCC']; break;
+                    case 'NOSBHC': color = 'orange'; overlay = overlayLayers['No SBHC / School']; break;
+                    case 'Unknown': color = 'gray'; overlay = overlayLayers['Unknown']; break;
+                    case 'School': color = 'orange'; overlay = overlayLayers['No SBHC / School']; break;
+                    default: color = 'black'; overlay = null;
+                }
+
+                var marker = L.marker([lat, lon], {
+                    icon: L.divIcon({ className: 'custom-marker', html: '<i style="color: ' + color + '; font-size: 24px;">•</i>' })
+                }).bindPopup("<b>" + name + "</b><br><b>Description:</b> " + description + "<br><b>Category:</b> " + category + services_text);
+
+                if (overlay) {
+                    marker.addTo(overlay);
+                } else {
+                    marker.addTo(map);
+                }
+
+                marker_services.push({
+                    marker: marker,
+                    lat: lat,
+                    lon: lon,
+                    services: services,
+                    popup: "<b>" + name + "</b><br><b>Description:</b> " + description + "<br><b>Category:</b> " + category + services_text
+                });
+
+                closeAddMarkerForm();
+            } else {
+                alert('Please enter valid information for the required fields (Name, Latitude, and Longitude).');
+            }
+        }
+
+        function searchMarkers() {
+            var service = document.getElementById('service-search').value;
+            var foundMarkers = [];
+
+            // Loop through markers and check for the service
+            marker_services.forEach(function (markerInfo) {
+                if (markerInfo.services.includes(service)) {
+                    foundMarkers.push(markerInfo);
+                }
+            });
+
+            // Create a popup with all found markers
+            if (foundMarkers.length > 0) {
+                var popupContent = "<h4>Markers with Service: " + service + "</h4>";
+                foundMarkers.forEach(function (markerInfo, index) {
+                    if (index > 0) {
+                        popupContent += "<hr>"; // Separator for multiple markers
+                    }
+                    popupContent += markerInfo.popup;
+                });
+
+                // Use map's setView to center on the found markers and open a popup
+                var markerLatLon = [foundMarkers[0].lat, foundMarkers[0].lon];
+                map.setView(markerLatLon, 10);
+                L.popup()
+                    .setLatLng(markerLatLon)
+                    .setContent(popupContent)
+                    .openOn(map);
+            } else {
+                alert('No markers found with the selected service.');
+            }
+        }
+    </script>
+</body>
+</html>
